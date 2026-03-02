@@ -54,7 +54,7 @@ export async function POST(
       isEvalSupported: false,
       useSystemFonts: true,
       disableWorker: true, 
-    });
+    } as any);
 
     const pdfDocument = await loadingTask.promise;
     const numPages = pdfDocument.numPages;
