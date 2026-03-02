@@ -36,7 +36,7 @@ export async function POST(
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const pdfParse = (await import("pdf-parse")).default;
+    const { default: pdfParse } = await import("pdf-parse") as any;
     const data = await pdfParse(buffer);
 
     const text = data.text.replace(/\s+/g, " ").trim();
