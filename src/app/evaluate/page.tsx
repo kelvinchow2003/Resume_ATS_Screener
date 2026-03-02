@@ -72,14 +72,14 @@ async function parsePDF(file: File): Promise<ParsePDFResponse> {
 
   if (!res.ok) {
     const err = data as APIError;
-    throw new Error(err.error ?? `PDF parse failed with status ${res.status}`);
+    throw new Error(err.error ?? `parse-pdf returned ${res.status}`);
   }
 
   return data as ParsePDFResponse;
 }
 
 // -----------------------------------------------------------------------------
-// Loading step indicator
+// Step indicator (shown during engine processing)
 // -----------------------------------------------------------------------------
 function StepIndicator({
   status,
@@ -88,58 +88,35 @@ function StepIndicator({
   status: PageState;
   engines: EngineStatus;
 }) {
-  const steps: {
-    key: keyof EngineStatus | "parse";
-    label: string;
-    state: "pending" | "running" | "done" | "error";
-  }[] = [
-    {
-      key: "parse",
-      label: "Extracting PDF text",
-      state:
-        status === "idle"
-          ? "pending"
-          : status === "parsing"
-          ? "running"
-          : "done",
-    },
-    { key: "legacy",   label: "Legacy ATS — keyword scan",       state: engines.legacy   },
-    { key: "semantic", label: "Semantic ATS — Cohere embeddings", state: engines.semantic },
-    { key: "ai",       label: "AI Recruiter — Gemini analysis",   state: engines.ai       },
+  const steps = [
+    { label: "PDF Parsed", state: status === "parsing" ? ("running" as const) : ("done" as const) },
+    { label: "Legacy ATS (Keywords)", state: engines.legacy },
+    { label: "Semantic ATS (Embeddings)", state: engines.semantic },
+    { label: "AI Recruiter (Gemini)", state: engines.ai },
   ];
 
-  const icon = (state: typeof steps[0]["state"]) => {
-    if (state === "done")
-      return (
-        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      );
-    if (state === "running")
-      return (
-        <svg className="w-4 h-4 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      );
-    if (state === "error")
-      return (
-        <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      );
-    return <div className="w-4 h-4 rounded-full border border-slate-600" />;
-  };
-
   return (
-    <div className="w-full max-w-sm mx-auto space-y-3">
-      {steps.map((step) => (
-        <div key={step.key} className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-            {icon(step.state)}
-          </div>
+    <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
+      {steps.map((step, i) => (
+        <div key={i} className="flex items-center gap-3">
+          {step.state === "running" ? (
+            <svg className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : step.state === "done" ? (
+            <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : step.state === "error" ? (
+            <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <div className="w-4 h-4 rounded-full border-2 border-slate-700 flex-shrink-0" />
+          )}
           <span
-            className={`text-sm transition-colors ${
+            className={`text-sm ${
               step.state === "running"
                 ? "text-white font-medium"
                 : step.state === "done"
@@ -324,29 +301,19 @@ export default function EvaluatePage() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-[#0b0d14] text-slate-200">
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div className="relative bg-[#0b0d14] text-slate-200">
+      {/* Ambient glow — z-0 keeps it behind the sticky header (z-50) */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-blue-600/4 blur-[130px] rounded-full" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-violet-600/4 blur-[100px] rounded-full" />
       </div>
 
-      <div className="relative px-4 py-12">
+      <div className="relative z-10 px-4 py-12 min-h-[calc(100vh-4rem)]">
 
         {/* ---- IDLE: show the upload form ---- */}
         {pageState === "idle" && (
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2.5 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                </div>
-                <span className="font-mono text-lg font-bold text-white tracking-tight">
-                  ATS<span className="text-blue-400">.</span>Benchmarker
-                </span>
-              </div>
               <h1 className="text-2xl font-bold text-white mb-2">
                 Benchmark your resume
               </h1>
