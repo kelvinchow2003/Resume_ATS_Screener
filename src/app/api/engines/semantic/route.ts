@@ -22,9 +22,9 @@ export async function POST(
 
     return NextResponse.json(await runSemanticATS(resumeText.trim(), jobDescription.trim()));
   } catch (err) {
-    console.error("[engine/semantic] FULL ERROR:", err);
+    console.error("[engine/semantic]", err);
     const msg = err instanceof Error ? err.message : "Unknown";
-    console.error("[engine/semantic] Error message:", msg);
+    const isRate = msg.toLowerCase().includes("rate") || msg.includes("429");
     return NextResponse.json(
       { error: isRate ? "Cohere rate limit reached." : "Semantic engine failed.", detail: msg },
       { status: isRate ? 429 : 500 }
