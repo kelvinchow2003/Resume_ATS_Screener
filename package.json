@@ -21,7 +21,7 @@
     "lucide-react": "^0.576.0",
     "ml-distance": "^4.0.1",
     "next": "16.1.6",
-    "pdfjs-dist": "^5.5.207",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.35",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

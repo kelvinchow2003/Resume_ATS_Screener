@@ -1,9 +1,3 @@
-// src/app/api/parse-pdf/route.ts
-//
-// Install first:
-//   npm uninstall pdf-parse @types/pdf-parse
-//   npm install pdfjs-dist
-
 import { NextRequest, NextResponse } from "next/server";
 import type { ParsePDFResponse, APIError } from "@/types/evaluation";
 
@@ -40,36 +34,12 @@ export async function POST(
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
 
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/legacy/build/pdf.worker.mjs",
-      import.meta.url
-    ).toString();
+    const pdfParse = (await import("pdf-parse")).default;
+    const data = await pdfParse(buffer);
 
-    const loadingTask = pdfjsLib.getDocument({
-      data: uint8Array,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-      disableWorker: true, 
-    } as any);
-
-    const pdfDocument = await loadingTask.promise;
-    const numPages = pdfDocument.numPages;
-
-    const pageTexts: string[] = [];
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item) => ("str" in item ? item.str : ""))
-        .join(" ");
-      pageTexts.push(pageText);
-    }
-
-    const text = pageTexts.join("\n\n").replace(/\s+/g, " ").trim();
+    const text = data.text.replace(/\s+/g, " ").trim();
 
     if (text.length < 50) {
       return NextResponse.json(
@@ -83,7 +53,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ text, charCount: text.length, pageCount: numPages });
+    return NextResponse.json({ text, charCount: text.length, pageCount: data.numpages });
   } catch (err) {
     console.error("[parse-pdf] Error:", err);
     return NextResponse.json(
