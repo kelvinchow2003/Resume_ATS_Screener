@@ -4,7 +4,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import type { AIRecruiterResult } from "@/types/evaluation";
 
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.5-flash";
 
 const SYSTEM_INSTRUCTION = `You are a ruthlessly objective senior technical recruiter at a Fortune 500 company.
 Evaluate the resume against the job description and return ONLY a raw JSON object.
