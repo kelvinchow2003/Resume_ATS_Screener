@@ -2,12 +2,14 @@
 // src/app/dashboard/page.tsx
 // Authenticated dashboard — shows the user's evaluation history.
 // This is a Server Component that fetches evaluations from Supabase.
+// Now includes a visible user profile strip with sign-out functionality.
 // =============================================================================
 
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { EvaluationRow } from "@/types/evaluation";
+import SignOutButton from "./SignOutButton";
 
 // -----------------------------------------------------------------------------
 // Helper: format a score into a colour class
@@ -178,6 +180,13 @@ export default async function DashboardPage() {
 
   const rows = (evaluations ?? []) as EvaluationRow[];
 
+  // Extract initials for avatar
+  const email = user.email ?? "";
+  const initials = email
+    .split("@")[0]
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className="min-h-screen bg-[#0b0d14] text-slate-200">
       {/* Background glow */}
@@ -187,22 +196,31 @@ export default async function DashboardPage() {
 
       <div className="relative max-w-3xl mx-auto px-4 py-12">
 
-        {/* Header */}
+        {/* ---- User profile strip ---- */}
+        <div className="flex items-center gap-4 mb-8 p-4 rounded-xl bg-slate-800/30 border border-slate-800">
+          {/* Avatar */}
+          <div className="flex-shrink-0 w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/20">
+            {initials}
+          </div>
+
+          {/* User info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white truncate">{email}</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {rows.length} evaluation{rows.length !== 1 ? "s" : ""} saved
+            </p>
+          </div>
+
+          {/* Sign out button */}
+          <SignOutButton />
+        </div>
+
+        {/* ---- Page header ---- */}
         <div className="flex items-center justify-between mb-10">
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-              </div>
-              <span className="font-mono text-base font-bold text-white">
-                ATS<span className="text-blue-400">.</span>Benchmarker
-              </span>
-            </div>
             <h1 className="text-2xl font-bold text-white">Dashboard</h1>
             <p className="text-sm text-slate-500 mt-1">
-              {user.email} · {rows.length} evaluation{rows.length !== 1 ? "s" : ""}
+              Your evaluation history
             </p>
           </div>
 

@@ -1,10 +1,12 @@
 // =============================================================================
 // src/app/layout.tsx
 // Root layout — wraps every page. Sets fonts, metadata, and imports globals.css.
+// Now includes the global Header component for consistent navigation.
 // =============================================================================
 
 import type { Metadata } from "next";
 import "./globals.css";
+import Header from "@/components/layout/Header";
 
 export const metadata: Metadata = {
   title: "ATS Benchmarker — Score your resume against 3 ATS engines",
@@ -19,7 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }
