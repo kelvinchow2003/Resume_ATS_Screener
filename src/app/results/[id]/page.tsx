@@ -1,13 +1,20 @@
 // =============================================================================
 // src/app/results/[id]/page.tsx
 // Detail view for a single saved evaluation.
-// Server Component — fetches the evaluation by ID from Supabase.
+// Server Component — fetches the evaluation row by ID from Supabase,
+// reconstructs the typed engine results, and passes them to a client
+// component for rendering (because the result components use hooks).
 // =============================================================================
 
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import type { EvaluationRow, LegacyATSResult, SemanticATSResult, AIRecruiterResult } from "@/types/evaluation";
+import type {
+  EvaluationRow,
+  LegacyATSResult,
+  SemanticATSResult,
+  AIRecruiterResult,
+} from "@/types/evaluation";
 import ResultsClient from "./ResultsClient";
 
 // -----------------------------------------------------------------------------
@@ -21,6 +28,7 @@ export default async function ResultsDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
+  // Auth check — middleware also guards /results, this is a safety net
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -29,6 +37,7 @@ export default async function ResultsDetailPage({
     redirect("/login?redirectedFrom=/results/" + id);
   }
 
+  // Fetch the single evaluation row, scoped to the current user
   const { data: row, error } = await supabase
     .from("evaluations")
     .select("*")
@@ -42,24 +51,27 @@ export default async function ResultsDetailPage({
 
   const evaluation = row as EvaluationRow;
 
-  // Reconstruct typed engine results from the stored JSON/columns
-  const legacy: LegacyATSResult = evaluation.legacy_details as LegacyATSResult ?? {
+  // ---- Reconstruct typed engine results from stored JSON/columns ----
+  const legacy: LegacyATSResult = (evaluation.legacy_details as LegacyATSResult) ?? {
     score: evaluation.legacy_score ?? 0,
     matchedKeywords: evaluation.legacy_matched ?? [],
     missingKeywords: evaluation.legacy_missing ?? [],
-    totalJDKeywords: (evaluation.legacy_matched?.length ?? 0) + (evaluation.legacy_missing?.length ?? 0),
+    totalJDKeywords:
+      (evaluation.legacy_matched?.length ?? 0) +
+      (evaluation.legacy_missing?.length ?? 0),
     matchRate: 0,
   };
 
-  const semantic: SemanticATSResult = evaluation.semantic_details as SemanticATSResult ?? {
+  const semantic: SemanticATSResult = (evaluation.semantic_details as SemanticATSResult) ?? {
     score: evaluation.semantic_score ?? 0,
     rawSimilarity: 0,
     interpretation: "",
   };
 
-  const aiRecruiter: AIRecruiterResult = evaluation.ai_details as AIRecruiterResult ?? {
+  const aiRecruiter: AIRecruiterResult = (evaluation.ai_details as AIRecruiterResult) ?? {
     Score: evaluation.ai_score ?? 0,
-    Verdict: (evaluation.ai_verdict as AIRecruiterResult["Verdict"]) ?? "Not a Fit",
+    Verdict:
+      (evaluation.ai_verdict as AIRecruiterResult["Verdict"]) ?? "Not a Fit",
     Feedback: evaluation.ai_feedback ?? "",
     Pros: evaluation.ai_pros ?? [],
     Cons: evaluation.ai_cons ?? [],
@@ -67,7 +79,7 @@ export default async function ResultsDetailPage({
 
   const compositeScore = evaluation.composite_score ?? 0;
 
-  // Format date for display
+  // Format date
   const dateStr = new Date(evaluation.created_at).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -75,11 +87,13 @@ export default async function ResultsDetailPage({
     year: "numeric",
   });
 
+  // JD preview
   const jdSnippet =
-    evaluation.job_description.length > 200
-      ? evaluation.job_description.slice(0, 200) + "…"
+    evaluation.job_description.length > 300
+      ? evaluation.job_description.slice(0, 300) + "…"
       : evaluation.job_description;
 
+  // ---------------------------------------------------------------------------
   return (
     <div className="relative bg-[#0b0d14] text-slate-200">
       {/* Background glow */}
@@ -87,31 +101,45 @@ export default async function ResultsDetailPage({
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-blue-600/4 blur-[130px] rounded-full" />
       </div>
 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 py-10 min-h-[calc(100vh-4rem)]">
-
-        {/* Back link + date */}
+      <div className="relative z-10 max-w-3xl mx-auto px-4 py-8 sm:py-10 min-h-[calc(100vh-4rem)]">
+        {/* ---- Breadcrumb row ---- */}
         <div className="flex items-center justify-between mb-8">
           <Link
             href="/dashboard"
             className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to Dashboard
           </Link>
-          <span className="text-xs text-slate-600">{dateStr}</span>
+          <span className="text-xs text-slate-600 hidden sm:block">{dateStr}</span>
         </div>
 
-        {/* JD context */}
+        {/* ---- Job description context ---- */}
         <div className="mb-8 p-4 rounded-xl bg-slate-800/30 border border-slate-800">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-            Job Description
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Job Description
+            </p>
+            <span className="text-xs text-slate-600 sm:hidden">{dateStr}</span>
+          </div>
+          <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+            {jdSnippet}
           </p>
-          <p className="text-sm text-slate-400 leading-relaxed">{jdSnippet}</p>
         </div>
 
-        {/* Results (client component for animations) */}
+        {/* ---- Full results (client component for animations) ---- */}
         <ResultsClient
           compositeScore={compositeScore}
           legacy={legacy}
@@ -119,8 +147,8 @@ export default async function ResultsDetailPage({
           aiRecruiter={aiRecruiter}
         />
 
-        {/* Actions */}
-        <div className="flex items-center justify-center gap-4 pt-6 pb-10">
+        {/* ---- Action buttons ---- */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-8 pb-10">
           <Link
             href="/evaluate"
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600
