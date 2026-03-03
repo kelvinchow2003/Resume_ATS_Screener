@@ -1,9 +1,20 @@
+// =============================================================================
+// src/middleware.ts
+// Next.js middleware — runs on every matched request.
+// 1. Refreshes the Supabase session cookie (keeps auth alive)
+// 2. Redirects unauthenticated users away from /dashboard, /evaluate, /results
+// 3. Redirects authenticated users away from /login and /signup
+// =============================================================================
+
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+// Only these exact prefixes require a logged-in user
 const PROTECTED_ROUTES = ["/dashboard", "/results"];
+// /evaluate is intentionally NOT protected — anonymous use is allowed
 const AUTH_ROUTES = ["/login", "/signup"];
 
+// Must be named "middleware" — Next.js looks for this exact export name
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
@@ -32,12 +43,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — this writes updated cookies to the response
-  const { data: { user } } = await supabase.auth.getUser();
+  // Always use getUser() not getSession() — validates JWT server-side
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  // Only redirect away from protected routes if definitely not authenticated
+  // Redirect unauthenticated users away from protected routes
   const isProtected = PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route)
   );
@@ -47,9 +60,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Don't redirect authenticated users away from auth pages here —
-  // let the page components handle that to avoid redirect loops
-  // after OAuth callbacks.
+  // Redirect authenticated users away from auth pages
+  const isAuthPage = AUTH_ROUTES.some((route) => pathname.startsWith(route));
+  if (isAuthPage && user) {
+    return NextResponse.redirect(new URL("/evaluate", request.url));
+  }
 
   return response;
 }
@@ -58,7 +73,8 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/results/:path*",
-    // Intentionally NOT matching /evaluate or /login
-    // to avoid interfering with the OAuth callback flow
+    "/evaluate/:path*",
+    "/login",
+    "/signup",
   ],
 };
