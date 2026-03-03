@@ -1,13 +1,13 @@
 // =============================================================================
 // src/app/login/page.tsx
-// useSearchParams() requires a Suspense boundary in Next.js App Router.
-// Pattern: inner component reads search params, outer page wraps with Suspense.
+// Phase 1 update: Added "Forgot password?" link in sign-in mode.
 // =============================================================================
 
 "use client";
 
 import { useState, useEffect, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "signup";
@@ -182,6 +182,16 @@ function LoginForm() {
         <InputField id="password" label="Password" type="password" value={form.password}
           onChange={setField("password")} error={errors.password}
           placeholder={mode === "signup" ? "Min. 8 characters" : "••••••••"} disabled={isLoading} />
+
+        {/* Forgot password link — only in login mode */}
+        {mode === "login" && (
+          <div className="flex justify-end -mt-2">
+            <Link href="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors">
+              Forgot password?
+            </Link>
+          </div>
+        )}
+
         {mode === "signup" && (
           <InputField id="confirmPassword" label="Confirm Password" type="password"
             value={form.confirmPassword} onChange={setField("confirmPassword")}
@@ -235,7 +245,6 @@ function LoginForm() {
   );
 }
 
-// Skeleton shown while LoginForm suspends during static prerender
 function LoginSkeleton() {
   return (
     <div className="bg-[#111420] border border-slate-800 rounded-2xl p-8 shadow-2xl animate-pulse">
@@ -249,18 +258,15 @@ function LoginSkeleton() {
   );
 }
 
-// -----------------------------------------------------------------------------
-// Page export — Suspense wraps LoginForm which calls useSearchParams()
-// -----------------------------------------------------------------------------
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#0b0d14] flex items-center justify-center px-4 py-16">
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div className="relative bg-[#0b0d14] min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-16">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[400px] h-[300px] bg-violet-600/5 blur-[100px] rounded-full" />
       </div>
 
-      <div className="relative w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2.5 mb-4">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -275,7 +281,6 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500">Score your resume against 3 real-world ATS engines</p>
         </div>
 
-        {/* Suspense boundary is REQUIRED whenever useSearchParams() is used in App Router */}
         <Suspense fallback={<LoginSkeleton />}>
           <LoginForm />
         </Suspense>
