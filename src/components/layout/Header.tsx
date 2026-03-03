@@ -1,8 +1,3 @@
-// =============================================================================
-// src/components/layout/Header.tsx
-// Global navigation header. Shows on every page via root layout.
-// =============================================================================
-
 "use client";
 
 import Link from "next/link";
@@ -23,11 +18,10 @@ export default function Header() {
   );
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null);
-      setLoading(false);
-    });
-
+    // onAuthStateChange fires immediately with the current session,
+    // so we use it as the single source of truth rather than calling
+    // getUser() separately. This prevents the race condition where
+    // getUser() resolves before the Google OAuth session cookie is written.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
