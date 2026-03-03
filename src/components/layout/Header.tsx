@@ -6,9 +6,15 @@ import { createBrowserClient } from "@supabase/ssr";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
-export default function Header() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+interface HeaderProps {
+  // Server-rendered initial user — eliminates the flash of unauthenticated
+  // state and the race condition after OAuth redirects.
+  initialUser: User | null;
+}
+
+export default function Header({ initialUser }: HeaderProps) {
+  // Seed state directly from the server-side value — no loading flicker
+  const [user, setUser] = useState<User | null>(initialUser);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -18,15 +24,12 @@ export default function Header() {
   );
 
   useEffect(() => {
-    // onAuthStateChange fires immediately with the current session,
-    // so we use it as the single source of truth rather than calling
-    // getUser() separately. This prevents the race condition where
-    // getUser() resolves before the Google OAuth session cookie is written.
+    // Keep client state in sync with any auth changes that happen
+    // AFTER the initial server render (sign out, token refresh, etc.)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -72,10 +75,7 @@ export default function Header() {
             Evaluate
           </Link>
 
-          {/* Auth-dependent items */}
-          {loading ? (
-            <div className="h-8 w-24 rounded-lg bg-slate-800/60 animate-pulse" />
-          ) : user ? (
+          {user ? (
             <>
               <Link
                 href="/dashboard"
