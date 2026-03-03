@@ -138,13 +138,16 @@ function LoginForm() {
   }
 
   async function handleGoogleLogin() {
-    setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) { setErrors({ form: error.message }); setIsLoading(false); }
-  }
+  setIsLoading(true);
+  const redirectTo = process.env.NEXT_PUBLIC_SITE_URL
+    ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+    : `${window.location.origin}/auth/callback`;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo },
+  });
+  if (error) { setErrors({ form: error.message }); setIsLoading(false); }
+}
 
   return (
     <div className="bg-[#111420] border border-slate-800 rounded-2xl p-8 shadow-2xl">
